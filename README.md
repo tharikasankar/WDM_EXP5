@@ -64,24 +64,49 @@ class BooleanRetrieval:
 
     def boolean_search(self, query):
         query_terms = query.lower().split()
-        results = None
+        results = set()  # Initialize as empty set to accumulate results
+        current_set = None  # Current set to handle 'or' logic
 
-        for term in query_terms:
-            doc_ids = self.index.get(term, set())
-            if results is None:
-                results = doc_ids.copy()
+        i = 0
+        while i < len(query_terms):
+            term = query_terms[i]
+
+            if term == 'or':
+                if current_set is not None:
+                    results.update(current_set)
+                current_set = None  # Reset current set for the next term
+            elif term == 'and':
+                i += 1
+                continue  # 'and' is implicit, move to next term
+            elif term == 'not':
+                i += 1
+                if i < len(query_terms):
+                    not_term = query_terms[i]
+                    if not_term in self.index:
+                        not_docs = self.index[not_term]
+                        if current_set is None:
+                            current_set = set(range(1, len(documents) + 1))  # All doc IDs
+                        current_set.difference_update(not_docs)
             else:
-                if term.startswith('not'):
-                    results.difference_update(doc_ids)
-                elif term == 'or':
-                    results.update(doc_ids)
-                elif term == 'and':
-                    results.intersection_update(doc_ids)
+                if term in self.index:
+                    term_docs = self.index[term]
+                    if current_set is None:
+                        current_set = term_docs.copy()
+                    else:
+                        current_set.intersection_update(term_docs)
+                else:
+                    current_set = set()  # If the term doesn't exist, it results in an empty set
 
-        return list(results) if results else []
+            i += 1
+
+        # Update results with the last processed set
+        if current_set is not None:
+            results.update(current_set)
+
+        return sorted(results)
+
 if __name__ == "__main__":
     indexer = BooleanRetrieval()
-
 
     documents = {
         1: "Python is a programming language",
@@ -92,23 +117,22 @@ if __name__ == "__main__":
     for doc_id, text in documents.items():
         indexer.index_document(doc_id, text)
 
-
     indexer.create_documents_matrix(documents)
     indexer.print_documents_matrix_table()
-
-
     indexer.print_all_terms()
 
-
-    query1 = input("Enter your boolean query: ")
-    results = indexer.boolean_search(query1)
+    query = input("Enter your boolean query: ")
+    results = indexer.boolean_search(query)
     if results:
-        print(f"Results for '{query1}': {results}")
+        print(f"Results for '{query}': {results}")
     else:
         print("No results found for the query.")
+
+
 ```
 ### Output:
-![Screenshot 2024-09-21 141244](https://github.com/user-attachments/assets/61830ab5-f154-486e-aaed-e1df0a73a243)
+![image](https://github.com/user-attachments/assets/01e685c7-f2dc-4399-ae5b-1ad3395df63d)
+
 
 ### Result:
-Implementation of Information Retrieval Using Boolean Model in Python is successfully completed
+Thus the implementation of Information Retrieval Using Boolean Model in Python is successfully completed.
